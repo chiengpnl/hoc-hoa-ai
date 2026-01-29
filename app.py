@@ -15,17 +15,16 @@ client = genai.Client(api_key=api_key)
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Server dang chay tot!"
+    return "Server Hoa Hoc dang chay tot!"
 
 @app.route("/chat", methods=["POST"])
 def chat():
     user_text = request.form.get("message", "")
-    # Lấy lịch sử từ giao diện gửi lên
     history_raw = request.form.get("history", "[]")
     
     content_list = []
     
-    # 1. Thêm lịch sử vào nội dung gửi đi để AI nhớ ngữ cảnh
+    # 1. Xử lý Lịch sử
     try:
         history = json.loads(history_raw)
         for item in history:
@@ -33,8 +32,8 @@ def chat():
             content_list.append(f"Thay: {item.get('ai')}")
     except:
         pass
-    
-    # 2. Thêm nội dung hiện tại
+
+    # 2. Xử lý nội dung hiện tại
     if user_text:
         content_list.append(user_text)
     
@@ -47,14 +46,15 @@ def chat():
     if not content_list:
         return jsonify({"reply": "Thay dang doi cau hoi cua em."})
 
-    # 3. Lời nhắc hệ thống: Thêm quy định IUPAC
+    # 3. System Prompt chuẩn IUPAC
     system_prompt = (
-        "Ban la giao vien Hoa hoc. Khong dung LaTeX. "
-        "Dung dau cham (.) cho phep nhan. Xung Thay - Em. "
-        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium thay vi Natri, Oxygen thay vi Oxi...)."
+        "Ban la giao vien Hoa hoc. Xung Thay - Em. "
+        "KHONG dung LaTeX. Dung dau cham (.) cho phep nhan. "
+        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen...)."
     )
 
     try:
+        # SỬA QU TRỌNG: Viết chính xác ID model cho thư viện google-genai
         response = client.models.generate_content(
             model="gemini-1.5-flash", 
             contents=content_list,
@@ -62,7 +62,16 @@ def chat():
         )
         return jsonify({"reply": response.text})
     except Exception as e:
-        return jsonify({"reply": f"Loi: {str(e)}"})
+        # Nếu vẫn lỗi 404, thử tự động đổi sang tên model dự phòng
+        try:
+             response = client.models.generate_content(
+                model="models/gemini-1.5-flash", 
+                contents=content_list,
+                config={'system_instruction': system_prompt}
+            )
+             return jsonify({"reply": response.text})
+        except:
+            return jsonify({"reply": f"Loi: {str(e)}"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
