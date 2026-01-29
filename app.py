@@ -20,11 +20,11 @@ def home():
 @app.route("/chat", methods=["POST"])
 def chat():
     user_text = request.form.get("message", "")
-    history_raw = request.form.get("history", "[]") # Nhận lịch sử từ file HTML gửi lên
+    history_raw = request.form.get("history", "[]")
     
     content_list = []
     
-    # 1. Xử lý Lịch sử hội thoại
+    # 1. Xử lý Lịch sử
     try:
         history = json.loads(history_raw)
         for item in history:
@@ -46,7 +46,7 @@ def chat():
     if not content_list:
         return jsonify({"reply": "Thay dang doi cau hoi cua em."})
 
-    # 3. System Prompt: Ép dùng IUPAC và phong cách giáo viên
+    # 3. System Prompt: Ép IUPAC và phong cách giáo viên
     system_prompt = (
         "Ban la giao vien Hoa hoc. Xung Thay - Em. "
         "KHONG dung LaTeX (khong dung dau $). "
@@ -56,12 +56,15 @@ def chat():
 
     try:
         response = client.models.generate_content(
-            model="gemini-2.0-flash", # Dung ban flash cho nhanh va on dinh
+            model="gemini-1.5-flash", # Doi ve ban 1.5 de tranh loi 429
             contents=content_list,
             config={'system_instruction': system_prompt}
         )
         return jsonify({"reply": response.text})
     except Exception as e:
+        # Neu van bi loi quota, thong bao nhe nhang cho nguoi dung
+        if "429" in str(e):
+            return jsonify({"reply": "He thong dang qua tai mot chut, em doi 30 giay roi bam gui lai nhe!"})
         return jsonify({"reply": f"Loi: {str(e)}"})
 
 if __name__ == "__main__":
