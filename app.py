@@ -1,4 +1,5 @@
 import os
+import json
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from PIL import Image
@@ -14,13 +15,25 @@ client = genai.Client(api_key=api_key)
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Server dang chay tot!"
+    return "Server Hoa Hoc dang chay tot!"
 
 @app.route("/chat", methods=["POST"])
 def chat():
     user_text = request.form.get("message", "")
+    history_raw = request.form.get("history", "[]") # Nhận lịch sử từ file HTML gửi lên
+    
     content_list = []
     
+    # 1. Xử lý Lịch sử hội thoại
+    try:
+        history = json.loads(history_raw)
+        for item in history:
+            content_list.append(f"Em: {item.get('user')}")
+            content_list.append(f"Thay: {item.get('ai')}")
+    except:
+        pass
+
+    # 2. Xử lý nội dung hiện tại
     if user_text:
         content_list.append(user_text)
     
@@ -33,11 +46,17 @@ def chat():
     if not content_list:
         return jsonify({"reply": "Thay dang doi cau hoi cua em."})
 
-    system_prompt = "Ban la giao vien Hoa hoc. Khong dung LaTeX. Dung dau cham (.) cho phep nhan. Xung Thay - Em."
+    # 3. System Prompt: Ép dùng IUPAC và phong cách giáo viên
+    system_prompt = (
+        "Ban la giao vien Hoa hoc. Xung Thay - Em. "
+        "KHONG dung LaTeX (khong dung dau $). "
+        "Dung dau cham (.) cho phep nhan. "
+        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen, Iron(III) oxide...)."
+    )
 
     try:
         response = client.models.generate_content(
-            model="gemini-3-flash-preview", 
+            model="gemini-2.0-flash", # Dung ban flash cho nhanh va on dinh
             contents=content_list,
             config={'system_instruction': system_prompt}
         )
