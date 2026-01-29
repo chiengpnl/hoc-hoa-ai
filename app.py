@@ -15,16 +15,17 @@ client = genai.Client(api_key=api_key)
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Server Hoa Hoc dang chay tot!"
+    return "Server dang chay tot!"
 
 @app.route("/chat", methods=["POST"])
 def chat():
     user_text = request.form.get("message", "")
+    # Lấy lịch sử từ giao diện gửi lên
     history_raw = request.form.get("history", "[]")
     
     content_list = []
     
-    # 1. Xử lý Lịch sử
+    # 1. Thêm lịch sử vào nội dung gửi đi để AI nhớ ngữ cảnh
     try:
         history = json.loads(history_raw)
         for item in history:
@@ -32,8 +33,8 @@ def chat():
             content_list.append(f"Thay: {item.get('ai')}")
     except:
         pass
-
-    # 2. Xử lý nội dung hiện tại
+    
+    # 2. Thêm nội dung hiện tại
     if user_text:
         content_list.append(user_text)
     
@@ -46,15 +47,14 @@ def chat():
     if not content_list:
         return jsonify({"reply": "Thay dang doi cau hoi cua em."})
 
-    # 3. System Prompt chuẩn
+    # 3. Lời nhắc hệ thống: Thêm quy định IUPAC
     system_prompt = (
-        "Ban la giao vien Hoa hoc. Xung Thay - Em. "
-        "KHONG dung LaTeX. Dung dau cham (.) cho phep nhan. "
-        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen...)."
+        "Ban la giao vien Hoa hoc. Khong dung LaTeX. "
+        "Dung dau cham (.) cho phep nhan. Xung Thay - Em. "
+        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium thay vi Natri, Oxygen thay vi Oxi...)."
     )
 
     try:
-        # SUA TEN MODEL O DAY: Bo chu "models/" neu co
         response = client.models.generate_content(
             model="gemini-1.5-flash", 
             contents=content_list,
