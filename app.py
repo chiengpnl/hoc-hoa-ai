@@ -24,12 +24,12 @@ def chat():
     
     content_list = []
     
-    # 1. Xử lý Lịch sử
+    # 1. Xử lý Lịch sử (Dùng Thầy - Em cho thân thiện)
     try:
         history = json.loads(history_raw)
         for item in history:
-            content_list.append(f"Ban: {item.get('user')}")
-            content_list.append(f"Minh: {item.get('ai')}")
+            content_list.append(f"Em: {item.get('user')}")
+            content_list.append(f"Thay: {item.get('ai')}")
     except:
         pass
 
@@ -44,17 +44,18 @@ def chat():
             content_list.append(img)
 
     if not content_list:
-        return jsonify({"reply": "Minh dang doi cau hoi cua ban."})
+        return jsonify({"reply": "Thay dang doi cau hoi cua em."})
 
-    # 3. System Prompt chuẩn IUPAC
+    # 3. System Prompt chuẩn IUPAC và phong cách giáo viên
     system_prompt = (
-        "Ban la AI Hoa hoc. Xung Minh - Ban. "
+        "Ban la giao vien Hoa hoc. Xung Thay - Em. "
         "KHONG dung LaTeX. Dung dau cham (.) cho phep nhan. "
-        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen...)."
+        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen, Iron(III) oxide...)."
     )
 
-    # DANH SÁCH CÁC TÊN MODEL CÓ THỂ CHẠY (Để tránh lỗi 404)
-    model_names = ["gemini-1.5-flash", "models/gemini-3-flash-preview"]
+    # DANH SÁCH MODEL: Đưa 1.5 Flash lên đầu để tránh lỗi 429 nhanh nhất
+    # Gói Free của 1.5 Flash có giới hạn rộng hơn nhiều so với bản 3 Preview.
+    model_names = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-3-flash-preview"]
     
     last_error = ""
     for m_name in model_names:
@@ -67,9 +68,16 @@ def chat():
             return jsonify({"reply": response.text})
         except Exception as e:
             last_error = str(e)
-            continue # Thử tên model tiếp theo nếu bị lỗi
+            # Nếu gặp lỗi 429 (hết quota), thử model tiếp theo trong danh sách
+            if "429" in last_error or "404" in last_error:
+                continue 
+            break
             
-    return jsonify({"reply": f"Lỗi hệ thống (404/429): {last_error}"})
+    # Phản hồi thông minh nếu tất cả model đều bận
+    if "429" in last_error:
+        return jsonify({"reply": "He thong dang qua tai luot dung mien phi cua Google. Em vui long doi khoang 1 phut roi bam Gui lai nhe!"})
+        
+    return jsonify({"reply": f"Loi he thong: {last_error}"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
