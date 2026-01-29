@@ -28,8 +28,8 @@ def chat():
     try:
         history = json.loads(history_raw)
         for item in history:
-            content_list.append(f"Em: {item.get('user')}")
-            content_list.append(f"Thay: {item.get('ai')}")
+            content_list.append(f"Ban: {item.get('user')}")
+            content_list.append(f"Minh: {item.get('ai')}")
     except:
         pass
 
@@ -44,11 +44,11 @@ def chat():
             content_list.append(img)
 
     if not content_list:
-        return jsonify({"reply": "Thay dang doi cau hoi cua em."})
+        return jsonify({"reply": "Minh dang doi cau hoi cua ban."})
 
     # 3. System Prompt chuẩn IUPAC
     system_prompt = (
-        "Ban la giao vien Hoa hoc. Xung Thay - Em. "
+        "Ban la AI Hoa hoc. Xung Minh - Ban. "
         "KHONG dung LaTeX. Dung dau cham (.) cho phep nhan. "
         "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen...)."
     )
