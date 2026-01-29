@@ -54,7 +54,7 @@ def chat():
     )
 
     # DANH SÁCH CÁC TÊN MODEL CÓ THỂ CHẠY (Để tránh lỗi 404)
-    model_names = ["gemini-1.5-flash", "models/gemini-3.0-flash"]
+    model_names = ["gemini-1.5-flash", "models/gemini-3-flash-preview"]
     
     last_error = ""
     for m_name in model_names:
