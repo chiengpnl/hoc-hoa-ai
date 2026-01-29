@@ -53,25 +53,23 @@ def chat():
         "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen...)."
     )
 
-    try:
-        # SỬA QU TRỌNG: Viết chính xác ID model cho thư viện google-genai
-        response = client.models.generate_content(
-            model="gemini-1.5-flash", 
-            contents=content_list,
-            config={'system_instruction': system_prompt}
-        )
-        return jsonify({"reply": response.text})
-    except Exception as e:
-        # Nếu vẫn lỗi 404, thử tự động đổi sang tên model dự phòng
+    # DANH SÁCH CÁC TÊN MODEL CÓ THỂ CHẠY (Để tránh lỗi 404)
+    model_names = ["gemini-1.5-flash", "models/gemini-1.5-flash"]
+    
+    last_error = ""
+    for m_name in model_names:
         try:
-             response = client.models.generate_content(
-                model="models/gemini-1.5-flash", 
+            response = client.models.generate_content(
+                model=m_name, 
                 contents=content_list,
                 config={'system_instruction': system_prompt}
             )
-             return jsonify({"reply": response.text})
-        except:
-            return jsonify({"reply": f"Loi: {str(e)}"})
+            return jsonify({"reply": response.text})
+        except Exception as e:
+            last_error = str(e)
+            continue # Thử tên model tiếp theo nếu bị lỗi
+            
+    return jsonify({"reply": f"Lỗi hệ thống (404/429): {last_error}"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
