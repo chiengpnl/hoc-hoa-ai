@@ -9,7 +9,6 @@ import io
 app = Flask(__name__)
 CORS(app)
 
-# Kết nối với Gemini qua Key bí mật
 api_key = os.environ.get("GEMINI_API_KEY")
 client = genai.Client(api_key=api_key)
 
@@ -21,63 +20,48 @@ def home():
 def chat():
     user_text = request.form.get("message", "")
     history_raw = request.form.get("history", "[]")
-    
     content_list = []
     
-    # 1. Xử lý Lịch sử (Dùng Thầy - Em cho thân thiện)
     try:
         history = json.loads(history_raw)
         for item in history:
-            content_list.append(f"Em: {item.get('user')}")
-            content_list.append(f"Thay: {item.get('ai')}")
-    except:
-        pass
+            content_list.append(f"Ban: {item.get('user')}")
+            content_list.append(f"Minh: {item.get('ai')}")
+    except: pass
 
-    # 2. Xử lý nội dung hiện tại
     if user_text:
         content_list.append(user_text)
     
     if "file" in request.files:
         file = request.files["file"]
         if file.filename != '':
+            # TỐI ƯU ẢNH: Nén ảnh lại để tránh lỗi Server bận
             img = Image.open(file.stream).convert("RGB")
+            img.thumbnail((1024, 1024)) # Giảm kích thước nếu ảnh quá to
             content_list.append(img)
 
     if not content_list:
-        return jsonify({"reply": "Thay dang doi cau hoi cua em."})
+        return jsonify({"reply": "Minh dang doi cau hoi cua ban."})
 
-    # 3. System Prompt chuẩn IUPAC và phong cách giáo viên
     system_prompt = (
-        "Ban la giao vien Hoa hoc. Xung Thay - Em. "
+        "Ban la AI Hoa hoc. Xung Minh - Ban. "
         "KHONG dung LaTeX. Dung dau cham (.) cho phep nhan. "
-        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC (Vi du: Sodium, Oxygen, Hydrogen, Iron(III) oxide...)."
+        "BAT BUOC: Goi ten cac chat theo danh phap IUPAC."
     )
 
-    # DANH SÁCH MODEL: Đưa 1.5 Flash lên đầu để tránh lỗi 429 nhanh nhất
-    # Gói Free của 1.5 Flash có giới hạn rộng hơn nhiều so với bản 3 Preview.
-    model_names = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-3-flash-preview"]
-    
-    last_error = ""
-    for m_name in model_names:
-        try:
-            response = client.models.generate_content(
-                model=m_name, 
-                contents=content_list,
-                config={'system_instruction': system_prompt}
-            )
-            return jsonify({"reply": response.text})
-        except Exception as e:
-            last_error = str(e)
-            # Nếu gặp lỗi 429 (hết quota), thử model tiếp theo trong danh sách
-            if "429" in last_error or "404" in last_error:
-                continue 
-            break
-            
-    # Phản hồi thông minh nếu tất cả model đều bận
-    if "429" in last_error:
-        return jsonify({"reply": "He thong dang qua tai luot dung mien phi cua Google. Em vui long doi khoang 1 phut roi bam Gui lai nhe!"})
-        
-    return jsonify({"reply": f"Loi he thong: {last_error}"})
+    # Sử dụng duy nhất gemini-1.5-flash vì nó hỗ trợ ảnh tốt nhất và ổn định nhất
+    try:
+        response = client.models.generate_content(
+            model="gemini-1.5-flash", 
+            contents=content_list,
+            config={'system_instruction': system_prompt}
+        )
+        return jsonify({"reply": response.text})
+    except Exception as e:
+        error_msg = str(e)
+        if "429" in error_msg:
+            return jsonify({"reply": "Google dang bao het luot dung (Quota). Em hay doi 1-2 phut nhe."})
+        return jsonify({"reply": f"Loi he thong: {error_msg}"})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
